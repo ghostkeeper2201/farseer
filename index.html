@@ -1,162 +1,164 @@
 <!DOCTYPE html>
-<html lang="sr">
+<html lang="sr" class="">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interaktivna Analiza Wi-Fi Pozicioniranja</title>
+    <title>Unapređena Interaktivna Analiza Wi-Fi Pozicioniranja</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Chosen Palette: Slate Gray Harmony -->
-    <!-- Application Structure Plan: A single-page application designed for guided exploration. The structure uses a top navigation bar to switch between four logical sections: an introduction, a core interactive section comparing positioning methods (Trilateration vs. Fingerprinting), a visual overview of the system architecture, and a summary of key recommendations. This thematic structure was chosen over mirroring the report's linear format to allow users to directly compare the two main technologies and understand their practical implications through interactive visualizations. The user flow encourages learning by doing, starting with simple concepts and adding complexity via user interaction (e.g., adding a third node or toggling signal noise). -->
-    <!-- Visualization & Content Choices: 
-        - Report Info: Trilateration with 2 vs 3 nodes. Goal: Demonstrate ambiguity problem and its solution. Viz/Presentation: Interactive Chart.js scatter plot simulating a map. Interaction: A button "Dodaj 3. Čvor" adds the third data point and recalculates the unique position. Justification: Visually proves why three nodes are necessary, a core concept in the report. Library: Chart.js (Canvas).
-        - Report Info: Impact of signal noise. Goal: Explain the need for robust algorithms. Viz/Presentation: Toggle switch on the Trilateration chart. Interaction: "Šum Signala" toggle moves circles so they no longer intersect perfectly. Justification: Makes the abstract concept of "noise" tangible and justifies the report's recommendation for best-fit algorithms. Library: Chart.js (Canvas).
-        - Report Info: Fingerprinting method (Offline/Online phases). Goal: Explain the two-phase process and k-NN. Viz/Presentation: A two-part interactive view with a grid for the radio map and a k-NN visualization. Interaction: A slider allows users to change the 'k' value in the k-NN algorithm and see the immediate impact on the estimated location. Justification: Clarifies the complex fingerprinting workflow and provides a hands-on feel for how the matching algorithm works. Library: Chart.js (Canvas).
-        - Report Info: System Architecture. Goal: Illustrate the client-server model. Viz/Presentation: A clean diagram built with HTML/CSS. Interaction: Static visual. Justification: More engaging and easier to understand than a block of text. Method: HTML/Tailwind CSS.
-        - Report Info: Comparative Analysis. Goal: Summarize pros and cons. Viz/Presentation: A styled HTML table. Interaction: Static visual. Justification: Clear, direct comparison as presented in the source document. Method: HTML/Tailwind CSS. -->
-    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <script>
+        // Tailwind dark mode configuration
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
     <style>
+        /* Base styles */
         body {
             font-family: 'Inter', sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* Light mode colors */
+        body {
             background-color: #f8fafc; /* slate-50 */
             color: #334155; /* slate-700 */
         }
+
+        /* Dark mode colors */
+        body.dark {
+            background-color: #0f172a; /* slate-900 */
+            color: #cbd5e1; /* slate-300 */
+        }
+
+        .card {
+            background-color: white;
+            transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
+        }
+        .dark .card {
+            background-color: #1e293b; /* slate-800 */
+            border: 1px solid #334155; /* slate-700 */
+        }
+
         .nav-btn {
-            padding: 8px 16px;
-            border-radius: 8px;
             transition: all 0.3s ease;
-            font-weight: 500;
-            cursor: pointer;
         }
         .nav-btn.active {
             background-color: #0f172a; /* slate-900 */
             color: #f8fafc; /* slate-50 */
         }
+        .dark .nav-btn.active {
+            background-color: #f1f5f9; /* slate-100 */
+            color: #0f172a; /* slate-900 */
+        }
         .nav-btn:not(.active):hover {
             background-color: #e2e8f0; /* slate-200 */
         }
-        .content-section {
-            display: none;
+        .dark .nav-btn:not(.active):hover {
+            background-color: #334155; /* slate-700 */
         }
-        .content-section.active {
-            display: block;
-        }
-        .card {
-            background-color: white;
-            border-radius: 12px;
-            padding: 24px;
-            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-        .card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.1);
-        }
+        
         .tab-btn {
-            padding: 10px 20px;
-            border-radius: 8px;
             background-color: #f1f5f9; /* slate-100 */
             color: #475569; /* slate-600 */
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
+        }
+        .dark .tab-btn {
+            background-color: #334155; /* slate-700 */
+            color: #e2e8f0; /* slate-200 */
         }
         .tab-btn.active {
             background-color: #0f172a; /* slate-900 */
             color: white;
         }
-        .tab-content {
-            display: none;
+        .dark .tab-btn.active {
+            background-color: #f1f5f9; /* slate-100 */
+            color: #0f172a; /* slate-900 */
         }
-        .tab-content.active {
-            display: block;
-        }
+
+        .content-section { display: none; }
+        .content-section.active { display: block; }
+        
         .chart-container {
             position: relative;
             width: 100%;
             height: 400px;
             max-height: 50vh;
-            margin-left: auto;
-            margin-right: auto;
         }
-        @media (min-width: 768px) {
-            .chart-container {
-                height: 450px;
-            }
-        }
-        .control-panel button, .control-panel .toggle-switch {
-            transition: all 0.2s ease-in-out;
-        }
-        .control-panel button:hover {
-            transform: scale(1.05);
-        }
-        .toggle-switch {
+        @media (min-width: 768px) { .chart-container { height: 450px; } }
+
+        /* Tooltip styles */
+        .tooltip {
             position: relative;
             display: inline-block;
-            width: 60px;
-            height: 34px;
-        }
-        .toggle-switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-        .slider {
-            position: absolute;
             cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #ccc;
-            transition: .4s;
-            border-radius: 34px;
+            border-bottom: 1px dotted;
         }
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 26px;
-            width: 26px;
-            left: 4px;
-            bottom: 4px;
-            background-color: white;
-            transition: .4s;
-            border-radius: 50%;
-        }
-        input:checked + .slider {
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 250px;
             background-color: #1e293b; /* slate-800 */
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 10px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -125px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.875rem;
+            line-height: 1.25rem;
+            font-weight: normal;
         }
-        input:checked + .slider:before {
-            transform: translateX(26px);
+        .dark .tooltip .tooltiptext {
+             background-color: #f1f5f9;
+             color: #1e293b;
+        }
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
         }
     </style>
 </head>
-<body class="bg-slate-50">
+<body class="bg-slate-50 dark:bg-slate-900">
 
     <div class="container mx-auto p-4 md:p-8 max-w-7xl">
         
-        <header class="text-center mb-8">
-            <h1 class="text-4xl md:text-5xl font-bold text-slate-900 mb-2">Analiza Sistema za Wi-Fi Pozicioniranje</h1>
-            <p class="text-lg text-slate-600">Interaktivna vizuelizacija tehničkog plana</p>
+        <header class="text-center mb-8 relative">
+            <h1 class="text-4xl md:text-5xl font-bold text-slate-900 dark:text-slate-100 mb-2">Analiza Sistema za Wi-Fi Pozicioniranje</h1>
+            <p class="text-lg text-slate-600 dark:text-slate-400">Unapređena interaktivna vizuelizacija</p>
+            
+            <!-- Dark Mode Toggle -->
+            <div class="absolute top-0 right-0">
+                <button id="theme-toggle" class="p-2 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 dark:focus:ring-offset-slate-900">
+                    <svg id="theme-toggle-dark-icon" class="w-6 h-6 hidden" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+                    <svg id="theme-toggle-light-icon" class="w-6 h-6 hidden" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm-.707 12.122l.707-.707a1 1 0 011.414 1.414l-.707.707a1 1 0 01-1.414-1.414zM17 15.657a1 1 0 010 1.414l-.707.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM3 11a1 1 0 100-2H2a1 1 0 100 2h1z" fill-rule="evenodd" clip-rule="evenodd"></path></svg>
+                </button>
+            </div>
         </header>
 
-        <nav class="flex justify-center items-center bg-white p-2 rounded-xl shadow-md mb-10 sticky top-4 z-10">
+        <nav class="flex justify-center items-center bg-white dark:bg-slate-800 p-2 rounded-xl shadow-md mb-10 sticky top-4 z-10">
             <div class="flex flex-wrap justify-center gap-2">
                 <button class="nav-btn active" data-target="intro">Uvod</button>
-                <button class="nav-btn" data-target="methods">Metode Pozicioniranja</button>
-                <button class="nav-btn" data-target="architecture">Arhitektura Sistema</button>
-                <button class="nav-btn" data-target="recommendations">Analiza i Preporuke</button>
+                <button class="nav-btn" data-target="methods">Metode</button>
+                <button class="nav-btn" data-target="architecture">Arhitektura</button>
+                <button class="nav-btn" data-target="obstacles">Izazovi</button>
+                <button class="nav-btn" data-target="recommendations">Preporuke</button>
+                <button class="nav-btn" data-target="links">Resursi</button>
             </div>
         </nav>
 
         <main>
+            <!-- All sections remain the same, but with dark mode classes where necessary -->
             <section id="intro" class="content-section active">
                  <div class="card text-center">
-                    <h2 class="text-3xl font-bold text-slate-800 mb-4">Dobrodošli</h2>
-                    <p class="text-slate-600 max-w-3xl mx-auto leading-relaxed">
+                    <h2 class="text-3xl font-bold text-slate-800 dark:text-slate-100 mb-4">Dobrodošli</h2>
+                    <p class="text-slate-600 dark:text-slate-400 max-w-3xl mx-auto leading-relaxed">
                         Ova aplikacija pruža interaktivni pregled tehničkog plana za razvoj sistema za unutrašnje pozicioniranje pomoću Wi-Fi signala. Cilj je prevesti složene koncepte iz plana, kao što su **Trilateracija** i **Fingerprinting**, u intuitivne vizuelizacije. Istražite različite metode, razumite arhitekturu sistema i pregledajte ključne preporuke za dalji razvoj. Započnite odabirom jedne od sekcija iz navigacije.
                     </p>
                 </div>
@@ -164,8 +166,8 @@
 
             <section id="methods" class="content-section">
                 <div class="text-center mb-8">
-                    <h2 class="text-3xl font-bold text-slate-800">Interaktivno Poređenje Metoda</h2>
-                    <p class="text-slate-600 max-w-3xl mx-auto">
+                    <h2 class="text-3xl font-bold text-slate-800 dark:text-slate-100">Interaktivno Poređenje Metoda</h2>
+                    <p class="text-slate-600 dark:text-slate-400 max-w-3xl mx-auto">
                         Izaberite jednu od dve ključne metode pozicioniranja da biste videli kako funkcionišu u praksi. Svaka vizuelizacija vam omogućava da manipulišete parametrima i steknete dublje razumevanje njihovih prednosti i mana.
                     </p>
                 </div>
@@ -178,27 +180,27 @@
                     <div class="card">
                         <div class="grid md:grid-cols-2 gap-8 items-center">
                             <div>
-                                <h3 class="text-2xl font-bold text-slate-800 mb-3">Trilateracija: Geometrija Signala</h3>
-                                <p class="text-slate-600 mb-4 leading-relaxed">
-                                    Trilateracija procenjuje poziciju merenjem udaljenosti od poznatih tačaka (senzora). Udaljenost se računa iz jačine Wi-Fi signala (RSSI). Vizuelizacija prikazuje kako broj senzora utiče na preciznost.
+                                <h3 class="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-3">Trilateracija: Geometrija Signala</h3>
+                                <p class="text-slate-600 dark:text-slate-400 mb-4 leading-relaxed">
+                                    Trilateracija procenjuje poziciju merenjem udaljenosti od poznatih tačaka (senzora). Udaljenost se računa iz jačine Wi-Fi signala (<span class="tooltip">RSSI<span class="tooltiptext">Received Signal Strength Indicator - mera jačine signala koju primi uređaj. Vrednosti su negativne, a bliže nuli znači jači signal.</span></span>). Vizuelizacija prikazuje kako broj senzora utiče na preciznost.
                                 </p>
-                                <div class="control-panel bg-slate-100 p-4 rounded-lg space-y-4">
+                                <div class="control-panel bg-slate-100 dark:bg-slate-700/50 p-4 rounded-lg space-y-4">
                                     <div>
-                                        <h4 class="font-semibold text-slate-700 mb-2">Kontrole simulacije:</h4>
+                                        <h4 class="font-semibold text-slate-700 dark:text-slate-200 mb-2">Kontrole simulacije:</h4>
                                         <div class="flex flex-col sm:flex-row gap-4">
-                                            <button id="add-node-btn" class="w-full bg-slate-800 text-white font-bold py-2 px-4 rounded-lg hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-opacity-50">Dodaj 3. Čvor</button>
-                                            <button id="reset-trilateration-btn" class="w-full bg-slate-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-opacity-50">Resetuj</button>
+                                            <button id="add-node-btn" class="w-full bg-slate-800 dark:bg-slate-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-slate-700 dark:hover:bg-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-opacity-50">Dodaj 3. Čvor</button>
+                                            <button id="reset-trilateration-btn" class="w-full bg-slate-500 dark:bg-slate-700 text-white font-bold py-2 px-4 rounded-lg hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-opacity-50">Resetuj</button>
                                         </div>
                                     </div>
                                     <div class="flex items-center justify-between">
-                                        <span class="font-semibold text-slate-700">Šum Signala (Realni uslovi)</span>
-                                        <label class="toggle-switch">
-                                            <input type="checkbox" id="noise-toggle">
-                                            <span class="slider"></span>
+                                        <span class="font-semibold text-slate-700 dark:text-slate-200">Šum Signala (Realni uslovi)</span>
+                                        <label class="relative inline-flex items-center cursor-pointer">
+                                          <input type="checkbox" id="noise-toggle" class="sr-only peer">
+                                          <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
                                         </label>
                                     </div>
                                 </div>
-                                 <p id="trilateration-status" class="mt-4 text-center font-medium text-slate-700 h-12 flex items-center justify-center"></p>
+                                 <p id="trilateration-status" class="mt-4 text-center font-medium text-slate-700 dark:text-slate-300 h-12 flex items-center justify-center"></p>
                             </div>
                             <div class="chart-container">
                                 <canvas id="trilaterationChart"></canvas>
@@ -211,24 +213,24 @@
                      <div class="card">
                         <div class="grid md:grid-cols-2 gap-8 items-center">
                            <div>
-                                <h3 class="text-2xl font-bold text-slate-800 mb-3">Fingerprinting: Mapa Signala</h3>
-                                <p class="text-slate-600 mb-4 leading-relaxed">
-                                    Ova metoda se sastoji od dve faze. Prvo, u **Offline fazi**, kreira se detaljna "mapa" jačina signala. Zatim, u **Online fazi**, trenutna očitavanja se porede sa mapom kako bi se pronašla najsličnija lokacija pomoću k-NN algoritma.
+                                <h3 class="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-3">Fingerprinting: Mapa Signala</h3>
+                                <p class="text-slate-600 dark:text-slate-400 mb-4 leading-relaxed">
+                                    Ova metoda se sastoji od dve faze. Prvo, u **Offline fazi**, kreira se detaljna "mapa" jačina signala. Zatim, u **Online fazi**, trenutna očitavanja se porede sa mapom kako bi se pronašla najsličnija lokacija pomoću <span class="tooltip">k-NN algoritma<span class="tooltiptext">k-Nearest Neighbors je algoritam koji pronalazi 'k' najbližih tačaka iz mape signala trenutnom očitavanju. Prosečna pozicija tih 'k' tačaka se uzima kao procenjena lokacija.</span></span>.
                                 </p>
-                                <div class="control-panel bg-slate-100 p-4 rounded-lg space-y-4">
+                                <div class="control-panel bg-slate-100 dark:bg-slate-700/50 p-4 rounded-lg space-y-4">
                                     <div>
-                                        <h4 class="font-semibold text-slate-700 mb-2">k-Nearest Neighbors (k-NN) Parametar:</h4>
+                                        <h4 class="font-semibold text-slate-700 dark:text-slate-200 mb-2">k-Nearest Neighbors (k-NN) Parametar:</h4>
                                         <div class="flex items-center gap-4">
                                             <label for="k-slider" class="whitespace-nowrap">Vrednost 'k':</label>
                                             <input id="k-slider" type="range" min="1" max="10" value="3" class="w-full">
-                                            <span id="k-value" class="font-bold text-slate-800 w-8 text-center">3</span>
+                                            <span id="k-value" class="font-bold text-slate-800 dark:text-slate-100 w-8 text-center">3</span>
                                         </div>
                                     </div>
-                                    <button id="reset-fingerprinting-btn" class="w-full bg-slate-800 text-white font-bold py-2 px-4 rounded-lg hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-opacity-50">Resetuj Simulaciju</button>
+                                    <button id="reset-fingerprinting-btn" class="w-full bg-slate-800 dark:bg-slate-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-slate-700 dark:hover:bg-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-opacity-50">Resetuj Simulaciju</button>
                                 </div>
-                                <p class="mt-4 text-center font-medium text-slate-700">Pomerajte 'k' slajder da vidite kako broj suseda utiče na procenjenu lokaciju.</p>
+                                <p class="mt-4 text-center font-medium text-slate-700 dark:text-slate-300">Prevucite zvezdicu (stvarna lokacija) po mapi i posmatrajte kako se procena menja.</p>
                             </div>
-                            <div class="chart-container">
+                            <div class="chart-container cursor-move">
                                 <canvas id="fingerprintingChart"></canvas>
                             </div>
                         </div>
@@ -238,116 +240,160 @@
 
             <section id="architecture" class="content-section">
                 <div class="card">
-                    <h2 class="text-3xl font-bold text-slate-800 mb-2 text-center">Arhitektura Sistema</h2>
-                    <p class="text-slate-600 max-w-3xl mx-auto text-center mb-8">
-                        Sistem je zasnovan na Klijent-Server arhitekturi. Klijenti (različiti uređaji) prikupljaju podatke o Wi-Fi signalu i šalju ih centralnom serveru, koji vrši složene proračune pozicioniranja i skladišti podatke u bazi.
+                    <h2 class="text-3xl font-bold text-slate-800 dark:text-slate-100 mb-2 text-center">Arhitektura Sistema</h2>
+                    <p class="text-slate-600 dark:text-slate-400 max-w-3xl mx-auto text-center mb-8">
+                        Sistem je zasnovan na Klijent-Server arhitekturi. Klijenti prikupljaju podatke o Wi-Fi signalu i šalju ih centralnom serveru, koji vrši složene proračune i skladišti podatke.
                     </p>
-                    <div class="max-w-4xl mx-auto p-4">
-                        <div class="flex flex-col md:flex-row items-center justify-center gap-8 text-center">
-                            <div class="flex flex-col items-center gap-4">
-                                <div class="font-semibold text-lg">Klijenti</div>
-                                <div class="w-1 h-8 bg-slate-300"></div>
-                                <div class="flex flex-col gap-4">
-                                    <div class="bg-white p-4 rounded-lg shadow-md border border-slate-200">
-                                        <span class="text-4xl">💻</span>
-                                        <p class="font-semibold mt-1">Windows Klijent</p>
-                                        <p class="text-sm text-slate-500">Aktivno skeniranje</p>
-                                    </div>
-                                    <div class="bg-white p-4 rounded-lg shadow-md border border-slate-200">
-                                        <span class="text-4xl">🐧</span>
-                                        <p class="font-semibold mt-1">Linux Klijent</p>
-                                        <p class="text-sm text-slate-500">Pasivno praćenje</p>
-                                    </div>
-                                     <div class="bg-white p-4 rounded-lg shadow-md border border-slate-200">
-                                        <span class="text-4xl">🍓</span>
-                                        <p class="font-semibold mt-1">Raspberry Pi</p>
-                                        <p class="text-sm text-slate-500">Senzorski čvor</p>
-                                    </div>
+                    <div class="max-w-4xl mx-auto p-4 grid lg:grid-cols-3 gap-8 items-start">
+                        <!-- Clients -->
+                        <div class="flex flex-col items-center text-center">
+                            <h3 class="font-semibold text-lg mb-4 text-slate-800 dark:text-slate-200">Klijenti</h3>
+                            <div class="flex flex-col gap-4 w-full">
+                                <div class="bg-white dark:bg-slate-700 p-4 rounded-lg shadow-md border border-slate-200 dark:border-slate-600">
+                                    <span class="text-4xl">💻</span>
+                                    <p class="font-semibold mt-1">Windows/Linux</p>
+                                    <p class="text-sm text-slate-500 dark:text-slate-400">Aktivno skeniranje</p>
+                                </div>
+                                <div class="bg-white dark:bg-slate-700 p-4 rounded-lg shadow-md border border-slate-200 dark:border-slate-600">
+                                    <span class="text-4xl">🍓</span>
+                                    <p class="font-semibold mt-1">Raspberry Pi / ESP32</p>
+                                    <p class="text-sm text-slate-500 dark:text-slate-400">Senzorski čvor</p>
                                 </div>
                             </div>
-
-                            <div class="hidden md:block text-5xl text-slate-400 font-light">→</div>
-                            <div class="md:hidden text-5xl text-slate-400 font-light">↓</div>
-
-                            <div class="flex flex-col items-center gap-4">
-                                <div class="font-semibold text-lg">Server</div>
-                                <div class="w-1 h-8 bg-slate-300"></div>
-                                <div class="bg-white p-6 rounded-lg shadow-lg border border-slate-200">
-                                     <span class="text-5xl">⚙️</span>
-                                    <p class="font-bold text-xl mt-2">Centralni Server</p>
-                                    <p class="text-slate-500 mt-2">Python (Flask)</p>
-                                    <p class="text-slate-500">WebSocket</p>
-                                    <p class="text-slate-500">Logika pozicioniranja</p>
-                                </div>
-                                <div class="w-1 h-8 bg-slate-300"></div>
-                                <div class="bg-white p-6 rounded-lg shadow-lg border border-slate-200">
-                                    <span class="text-5xl">🗄️</span>
-                                    <p class="font-bold text-xl mt-2">Baza Podataka</p>
-                                    <p class="text-slate-500 mt-2">PostgreSQL</p>
-                                    <p class="text-slate-500">PostGIS Ekstenzija</p>
-                                </div>
+                        </div>
+                        <!-- Server & Data Flow -->
+                        <div class="flex flex-col items-center text-center">
+                            <h3 class="font-semibold text-lg mb-4 text-slate-800 dark:text-slate-200">Server & Protok Podataka</h3>
+                             <div class="bg-white dark:bg-slate-700 p-6 rounded-lg shadow-lg border border-slate-200 dark:border-slate-600 w-full">
+                                 <span class="text-5xl">⚙️</span>
+                                <p class="font-bold text-xl mt-2">Centralni Server</p>
+                                <p class="text-slate-500 dark:text-slate-400 mt-2">Python (Flask / FastAPI)</p>
+                                <p class="text-slate-500 dark:text-slate-400">WebSocket za real-time</p>
+                            </div>
+                            <div class="my-4 text-2xl text-slate-400">↓</div>
+                            <div class="w-full p-4 bg-slate-900 dark:bg-black rounded-lg text-left text-sm font-mono text-green-400 overflow-x-auto">
+                                <p class="text-white mb-2">// Primer JSON payload-a od klijenta</p>
+                                <pre><code>{
+  "deviceId": "client-01",
+  "timestamp": 1678886400,
+  "wifiData": [
+    {"bssid":"AA:BB:CC:11:22:33", "rssi":-54},
+    {"bssid":"DD:EE:FF:44:55:66", "rssi":-67}
+  ]
+}</code></pre>
+                            </div>
+                        </div>
+                        <!-- Database -->
+                        <div class="flex flex-col items-center text-center">
+                            <h3 class="font-semibold text-lg mb-4 text-slate-800 dark:text-slate-200">Baza Podataka</h3>
+                            <div class="bg-white dark:bg-slate-700 p-6 rounded-lg shadow-lg border border-slate-200 dark:border-slate-600 w-full">
+                                <span class="text-5xl">🗄️</span>
+                                <p class="font-bold text-xl mt-2">Baza Podataka</p>
+                                <p class="text-slate-500 dark:text-slate-400 mt-2">PostgreSQL + PostGIS</p>
+                                <p class="text-slate-500 dark:text-slate-400">Skladištenje radio mapa</p>
                             </div>
                         </div>
                     </div>
                 </div>
             </section>
 
+            <section id="obstacles" class="content-section">
+                <div class="card">
+                    <h2 class="text-3xl font-bold text-slate-800 dark:text-slate-100 mb-6 text-center">Potencijalni Tehnički Izazovi i Rešenja</h2>
+                    <div class="space-y-6">
+                        <div>
+                            <h3 class="text-xl font-bold text-slate-800 dark:text-slate-200 mb-2">1. Višestruka Putanja Signala (Multipath Fading)</h3>
+                            <p class="text-slate-600 dark:text-slate-400">Wi-Fi signali se odbijaju od zidova i objekata, što dovodi do toga da isti signal stiže do prijemnika više puta sa malim zakašnjenjem. Ovo iskrivljuje merenja jačine signala (RSSI).</p>
+                            <p class="mt-2 text-slate-500 dark:text-slate-300"><strong>Rešenja:</strong> Korišćenje naprednih filtera (npr. <span class="tooltip">Kalmanov filter<span class="tooltiptext">Algoritam koji koristi seriju merenja tokom vremena i proizvodi procene koje su preciznije od onih zasnovanih na samo jednom merenju.</span></span>) za ublažavanje fluktuacija, i istraživanje <span class="tooltip">Channel State Information (CSI)<span class="tooltiptext">CSI podaci pružaju mnogo detaljniji uvid u signal (amplitudu, fazu) od prostog RSSI, omogućavajući bolje modeliranje višestrukih putanja.</span></span> podataka.</p>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-bold text-slate-800 dark:text-slate-200 mb-2">2. Heterogenost Uređaja</h3>
+                            <p class="text-slate-600 dark:text-slate-400">Različiti uređaji imaju različite Wi-Fi čipove i antene, pa će na istoj lokaciji izmeriti različite RSSI vrednosti. Ovo je veliki problem za fingerprinting.</p>
+                            <p class="mt-2 text-slate-500 dark:text-slate-300"><strong>Rešenja:</strong> Razvoj algoritama za normalizaciju signala koji kompenzuju razlike, ili korišćenje crowdsourcing pristupa za prikupljanje podataka sa velikog broja različitih uređaja radi kreiranja robusnije radio mape.</p>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-bold text-slate-800 dark:text-slate-200 mb-2">3. Dinamičnost Okruženja</h3>
+                            <p class="text-slate-600 dark:text-slate-400">Unutrašnja okruženja se menjaju (pomeranje nameštaja, ljudi), što može učiniti fingerprinting mapu zastarelom i smanjiti preciznost.</p>
+                            <p class="mt-2 text-slate-500 dark:text-slate-300"><strong>Rešenja:</strong> Implementacija mehanizama za kontinuirano, automatsko ažuriranje radio mape korišćenjem podataka sa uređaja korisnika, kao i istraživanje adaptivnih modela koji uče promene.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
             <section id="recommendations" class="content-section">
                 <div class="card">
-                    <h2 class="text-3xl font-bold text-slate-800 mb-6 text-center">Uporedna Analiza i Preporuke</h2>
+                    <h2 class="text-3xl font-bold text-slate-800 dark:text-slate-100 mb-6 text-center">Uporedna Analiza i Preporuke</h2>
                     <div class="overflow-x-auto">
                         <table class="w-full min-w-max text-left border-collapse">
                             <thead>
-                                <tr class="bg-slate-800 text-white">
+                                <tr class="bg-slate-800 text-white dark:bg-slate-700">
                                     <th class="p-4 font-semibold">Karakteristika</th>
                                     <th class="p-4 font-semibold">Trilateracija</th>
                                     <th class="p-4 font-semibold">Fingerprinting</th>
                                 </tr>
                             </thead>
-                            <tbody class="bg-white">
-                                <tr class="border-b border-slate-200">
-                                    <td class="p-4 font-medium text-slate-700">Preciznost</td>
-                                    <td class="p-4 text-slate-600">Srednja (2-4m sa 3+ čvora)</td>
-                                    <td class="p-4 text-slate-600">Visoka (potencijalno <1m sa ML)</td>
+                            <tbody class="bg-white dark:bg-slate-800">
+                                <tr class="border-b border-slate-200 dark:border-slate-700">
+                                    <td class="p-4 font-medium text-slate-700 dark:text-slate-300">Preciznost</td>
+                                    <td class="p-4 text-slate-600 dark:text-slate-400">Srednja (2-4m sa 3+ čvora)</td>
+                                    <td class="p-4 text-slate-600 dark:text-slate-400">Visoka (potencijalno <1m sa ML)</td>
                                 </tr>
-                                <tr class="border-b border-slate-200">
-                                    <td class="p-4 font-medium text-slate-700">Napor za kalibraciju</td>
-                                    <td class="p-4 text-slate-600">Nizak (merenje parametara)</td>
-                                    <td class="p-4 text-slate-600">Veoma visok (kreiranje radio mape)</td>
+                                <tr class="border-b border-slate-200 dark:border-slate-700">
+                                    <td class="p-4 font-medium text-slate-700 dark:text-slate-300">Napor za kalibraciju</td>
+                                    <td class="p-4 text-slate-600 dark:text-slate-400">Nizak (merenje parametara)</td>
+                                    <td class="p-4 text-slate-600 dark:text-slate-400">Veoma visok (kreiranje radio mape)</td>
                                 </tr>
-                                <tr class="border-b border-slate-200">
-                                    <td class="p-4 font-medium text-slate-700">Prilagodljivost</td>
-                                    <td class="p-4 text-slate-600">Visoka (lako dodavanje čvorova)</td>
-                                    <td class="p-4 text-slate-600">Niska (zahteva rekalibraciju)</td>
+                                <tr class="border-b border-slate-200 dark:border-slate-700">
+                                    <td class="p-4 font-medium text-slate-700 dark:text-slate-300">Prilagodljivost</td>
+                                    <td class="p-4 text-slate-600 dark:text-slate-400">Visoka (lako dodavanje čvorova)</td>
+                                    <td class="p-4 text-slate-600 dark:text-slate-400">Niska (zahteva rekalibraciju)</td>
                                 </tr>
-                                <tr class="border-b border-slate-200">
-                                    <td class="p-4 font-medium text-slate-700">Složenost algoritma</td>
-                                    <td class="p-4 text-slate-600">Visoka (matematički proračuni)</td>
-                                    <td class="p-4 text-slate-600">Niska (pretraga baze)</td>
-                                </tr>
-                                 <tr class="border-b border-slate-200">
-                                    <td class="p-4 font-medium text-slate-700">Podložnost šumu</td>
-                                    <td class="p-4 text-slate-600">Visoka (zahteva napredne algoritme)</td>
-                                    <td class="p-4 text-slate-600">Niska (inherentno robustan)</td>
+                                 <tr class="border-b border-slate-200 dark:border-slate-700">
+                                    <td class="p-4 font-medium text-slate-700 dark:text-slate-300">Podložnost šumu</td>
+                                    <td class="p-4 text-slate-600 dark:text-slate-400">Visoka (zahteva napredne algoritme)</td>
+                                    <td class="p-4 text-slate-600 dark:text-slate-400">Niska (inherentno robustan)</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
                     <div class="mt-8">
-                        <h3 class="text-2xl font-bold text-slate-800 mb-4 text-center">Ključne Preporuke za Budući Razvoj</h3>
+                        <h3 class="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-4 text-center">Ključne Preporuke za Budući Razvoj</h3>
                         <div class="grid md:grid-cols-3 gap-6 text-center">
-                            <div class="bg-slate-50 p-6 rounded-lg">
-                                <h4 class="font-bold text-lg text-slate-900 mb-2">Hibridni Model</h4>
-                                <p class="text-slate-600">Kombinovati prednosti obe metode: koristiti trilateraciju za grubu procenu, a zatim fingerprinting za fino podešavanje pozicije.</p>
+                            <div class="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-lg">
+                                <h4 class="font-bold text-lg text-slate-900 dark:text-slate-200 mb-2">Hibridni Model</h4>
+                                <p class="text-slate-600 dark:text-slate-400">Kombinovati prednosti obe metode: koristiti trilateraciju za grubu procenu, a zatim fingerprinting za fino podešavanje pozicije.</p>
                             </div>
-                            <div class="bg-slate-50 p-6 rounded-lg">
-                                <h4 class="font-bold text-lg text-slate-900 mb-2">Hardverska Skalabilnost</h4>
-                                <p class="text-slate-600">Dizajnirati sistem za laku integraciju jeftinih IoT uređaja (npr. ESP32) kao dodatnih senzora za šire pokrivanje prostora.</p>
+                            <div class="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-lg">
+                                <h4 class="font-bold text-lg text-slate-900 dark:text-slate-200 mb-2">Hardverska Skalabilnost</h4>
+                                <p class="text-slate-600 dark:text-slate-400">Dizajnirati sistem za laku integraciju jeftinih IoT uređaja (npr. ESP32) kao dodatnih senzora za šire pokrivanje prostora.</p>
                             </div>
-                            <div class="bg-slate-50 p-6 rounded-lg">
-                                <h4 class="font-bold text-lg text-slate-900 mb-2">Proširenje Primene</h4>
-                                <p class="text-slate-600">Razviti platformu ka rešenjima za unutrašnju navigaciju, integracijom sa tehnologijama poput Bluetooth (BLE) ili UWB.</p>
+                            <div class="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-lg">
+                                <h4 class="font-bold text-lg text-slate-900 dark:text-slate-200 mb-2">Proširenje Primene</h4>
+                                <p class="text-slate-600 dark:text-slate-400">Razviti platformu ka rešenjima za unutrašnju navigaciju, integracijom sa tehnologijama poput Bluetooth (BLE) ili UWB.</p>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="links" class="content-section">
+                <div class="card">
+                    <h2 class="text-3xl font-bold text-slate-800 dark:text-slate-100 mb-6 text-center">Linkovi ka Srodnim Rešenjima i Resursima</h2>
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div class="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-lg">
+                            <h4 class="font-bold text-lg text-slate-900 dark:text-slate-200 mb-2">Otvoreni Kod i Istraživački Projekti</h4>
+                            <ul class="list-disc list-inside text-slate-600 dark:text-slate-400 space-y-2">
+                                <li><a href="https://anyplace.cs.ucy.ac.cy/" target="_blank" class="text-blue-500 hover:underline">Anyplace</a>: Otvorena platforma za unutrašnju navigaciju.</li>
+                                <li><a href="http://osiris-indoor.github.io/" target="_blank" class="text-blue-500 hover:underline">OSIRIS</a>: Open Source Indoor Rest Server.</li>
+                                <li><a href="https://www.researchgate.net/publication/242916645_The_HORUS_location_determination_system" target="_blank" class="text-blue-500 hover:underline">Horus System</a>: Uticajni istraživački projekat.</li>
+                            </ul>
+                        </div>
+                        <div class="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-lg">
+                            <h4 class="font-bold text-lg text-slate-900 dark:text-slate-200 mb-2">Skupovi Podataka (Datasets)</h4>
+                            <ul class="list-disc list-inside text-slate-600 dark:text-slate-400 space-y-2">
+                                <li><a href="https://www.kaggle.com/datasets/giantuji/UjiIndoorLoc" target="_blank" class="text-blue-500 hover:underline">UJIIndoorLoc Dataset</a>: Popularan javni skup podataka.</li>
+                                <li><a href="https://www.mdpi.com/2306-5729/8/1/14" target="_blank" class="text-blue-500 hover:underline">UTMInDualSymFi Dataset</a>: Fokus na dual-band Wi-Fi.</li>
+                            </ul>
                         </div>
                     </div>
                 </div>
@@ -357,92 +403,98 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // --- Theme Toggler ---
+            const themeToggleBtn = document.getElementById('theme-toggle');
+            const darkIcon = document.getElementById('theme-toggle-dark-icon');
+            const lightIcon = document.getElementById('theme-toggle-light-icon');
+
+            if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+                lightIcon.classList.remove('hidden');
+            } else {
+                document.documentElement.classList.remove('dark');
+                darkIcon.classList.remove('hidden');
+            }
+
+            themeToggleBtn.addEventListener('click', function() {
+                darkIcon.classList.toggle('hidden');
+                lightIcon.classList.toggle('hidden');
+                if (localStorage.getItem('color-theme')) {
+                    if (localStorage.getItem('color-theme') === 'light') {
+                        document.documentElement.classList.add('dark');
+                        localStorage.setItem('color-theme', 'dark');
+                    } else {
+                        document.documentElement.classList.remove('dark');
+                        localStorage.setItem('color-theme', 'light');
+                    }
+                } else {
+                    if (document.documentElement.classList.contains('dark')) {
+                        document.documentElement.classList.remove('dark');
+                        localStorage.setItem('color-theme', 'light');
+                    } else {
+                        document.documentElement.classList.add('dark');
+                        localStorage.setItem('color-theme', 'dark');
+                    }
+                }
+                // We need to re-init charts on theme change to pick up new colors
+                initTrilaterationChart();
+                initFingerprintingChart();
+            });
+
+
+            // --- Navigation ---
             const navButtons = document.querySelectorAll('.nav-btn');
             const contentSections = document.querySelectorAll('.content-section');
             const tabButtons = document.querySelectorAll('.tab-btn');
             const tabContents = document.querySelectorAll('.tab-content');
 
             function switchContent(targetId) {
-                navButtons.forEach(btn => {
-                    btn.classList.toggle('active', btn.dataset.target === targetId);
-                });
-                contentSections.forEach(section => {
-                    section.classList.toggle('active', section.id === targetId);
-                });
+                navButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.target === targetId));
+                contentSections.forEach(section => section.classList.toggle('active', section.id === targetId));
             }
 
-            navButtons.forEach(button => {
-                button.addEventListener('click', () => {
-                    switchContent(button.dataset.target);
-                });
-            });
-
+            navButtons.forEach(button => button.addEventListener('click', () => switchContent(button.dataset.target)));
             tabButtons.forEach(button => {
                 button.addEventListener('click', () => {
                     tabButtons.forEach(btn => btn.classList.remove('active'));
                     button.classList.add('active');
-                    tabContents.forEach(content => {
-                        content.classList.toggle('active', content.id === button.dataset.tab);
-                    });
+                    tabContents.forEach(content => content.classList.toggle('active', content.id === button.dataset.tab));
                 });
             });
 
+            // --- Charts ---
             let trilaterationChart, fingerprintingChart;
-
             const trilaterationState = {
                 nodes: [
                     { x: 10, y: 80, r: 50, color: 'rgba(59, 130, 246, 0.5)' },
                     { x: 90, y: 80, r: 60, color: 'rgba(239, 68, 68, 0.5)' }
                 ],
                 thirdNode: { x: 50, y: 10, r: 45, color: 'rgba(22, 163, 74, 0.5)' },
-                target: { x: 50, y: 50 },
                 noise: false,
                 showThirdNode: false
             };
-
             const fingerprintingState = {
                 referencePoints: [],
-                target: { x: Math.random() * 80 + 10, y: Math.random() * 80 + 10 },
-                k: 3
+                target: { x: 55, y: 65 },
+                k: 3,
+                isDragging: false
             };
 
-            function generateReferencePoints() {
-                fingerprintingState.referencePoints = [];
-                for (let i = 0; i < 15; i++) {
-                    for (let j = 0; j < 15; j++) {
-                        if (Math.random() > 0.3) {
-                             fingerprintingState.referencePoints.push({
-                                x: 5 + i * 6,
-                                y: 5 + j * 6,
-                                rssi: Math.random()
-                            });
-                        }
-                    }
-                }
-            }
-
+            // --- Trilateration Logic ---
             function getIntersectionPoints(p1, p2) {
                 const d = Math.sqrt((p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2);
                 if (d > p1.r + p2.r || d < Math.abs(p1.r - p2.r) || d === 0) return [];
-                
                 const a = (p1.r ** 2 - p2.r ** 2 + d ** 2) / (2 * d);
-                const h = Math.sqrt(p1.r ** 2 - a ** 2);
+                const h = Math.sqrt(Math.max(0, p1.r ** 2 - a ** 2));
                 const x2 = p1.x + a * (p2.x - p1.x) / d;
                 const y2 = p1.y + a * (p2.y - p1.y) / d;
-
-                const pt1 = {
-                    x: x2 + h * (p2.y - p1.y) / d,
-                    y: y2 - h * (p2.x - p1.x) / d
-                };
-                const pt2 = {
-                    x: x2 - h * (p2.y - p1.y) / d,
-                    y: y2 + h * (p2.x - p1.x) / d
-                };
-                return [pt1, pt2];
+                return [
+                    { x: x2 + h * (p2.y - p1.y) / d, y: y2 - h * (p2.x - p1.x) / d },
+                    { x: x2 - h * (p2.y - p1.y) / d, y: y2 + h * (p2.x - p1.x) / d }
+                ];
             }
 
             function findBestFit(nodes) {
-                let sumX = 0, sumY = 0;
                 let intersections = [];
                 for(let i=0; i<nodes.length; i++) {
                     for(let j=i+1; j<nodes.length; j++) {
@@ -450,8 +502,8 @@
                     }
                 }
                 if (intersections.length === 0) return null;
-                intersections.forEach(p => { sumX += p.x; sumY += p.y; });
-                return { x: sumX / intersections.length, y: sumY / intersections.length };
+                const sum = intersections.reduce((acc, p) => ({ x: acc.x + p.x, y: acc.y + p.y }), {x: 0, y: 0});
+                return { x: sum.x / intersections.length, y: sum.y / intersections.length };
             }
 
             function updateTrilaterationChart() {
@@ -466,33 +518,18 @@
 
                 noisyNodes.forEach((node, index) => {
                     datasets.push({
-                        label: `Senzor ${index + 1}`,
-                        data: [{ x: node.x, y: node.y }],
-                        pointRadius: 10,
-                        pointBackgroundColor: node.color.replace('0.5', '1'),
-                        borderColor: node.color.replace('0.5', '1'),
-                        borderWidth: 2,
+                        label: `Senzor ${index + 1}`, data: [{ x: node.x, y: node.y }],
+                        pointRadius: 10, pointBackgroundColor: node.color.replace('0.5', '1'),
                         type: 'scatter'
                     });
-
-                    const circlePoints = [];
-                    for (let i = 0; i <= 360; i++) {
+                    const circlePoints = Array.from({length: 361}, (_, i) => {
                         const angle = i * Math.PI / 180;
-                        circlePoints.push({
-                            x: node.x + node.r * Math.cos(angle),
-                            y: node.y + node.r * Math.sin(angle)
-                        });
-                    }
+                        return { x: node.x + node.r * Math.cos(angle), y: node.y + node.r * Math.sin(angle) };
+                    });
                     datasets.push({
-                        label: `Domet Senzora ${index + 1}`,
-                        data: circlePoints,
-                        borderColor: node.color,
-                        backgroundColor: node.color.replace('0.5', '0.2'),
-                        borderWidth: 2,
-                        showLine: true,
-                        pointRadius: 0,
-                        fill: true,
-                        type: 'scatter'
+                        label: `Domet Senzora ${index + 1}`, data: circlePoints,
+                        borderColor: node.color, backgroundColor: node.color.replace('0.5', '0.2'),
+                        borderWidth: 2, showLine: true, pointRadius: 0, fill: true, type: 'scatter'
                     });
                 });
                 
@@ -502,28 +539,17 @@
                     if(bestFit) {
                         locationPoints.push(bestFit);
                         statusEl.textContent = "Jedinstvena lokacija pronađena metodom 'najboljeg uklapanja'.";
-                    } else {
-                         statusEl.textContent = "Nema preseka. Potrebno je prilagoditi pozicije ili domete.";
-                    }
+                    } else { statusEl.textContent = "Nema preseka. Potrebno je prilagoditi pozicije ili domete."; }
                 } else {
                     const intersections = getIntersectionPoints(noisyNodes[0], noisyNodes[1]);
                     locationPoints.push(...intersections);
-                    if(intersections.length === 2) {
-                        statusEl.textContent = "Dva senzora daju dve moguće lokacije. Potreban je treći.";
-                    } else {
-                        statusEl.textContent = "Nema preseka. Dva senzora nisu dovoljna.";
-                    }
+                    statusEl.textContent = intersections.length === 2 ? "Dva senzora daju dve moguće lokacije. Potreban je treći." : "Nema preseka. Dva senzora nisu dovoljna.";
                 }
 
                 datasets.push({
-                    label: 'Moguća Lokacija',
-                    data: locationPoints,
-                    pointRadius: 8,
-                    pointStyle: 'crossRot',
-                    pointBackgroundColor: '#0f172a',
-                    borderColor: '#0f172a',
-                    borderWidth: 4,
-                    type: 'scatter'
+                    label: 'Moguća Lokacija', data: locationPoints,
+                    pointRadius: 8, pointStyle: 'crossRot', pointBackgroundColor: document.documentElement.classList.contains('dark') ? '#f1f5f9' : '#0f172a',
+                    borderColor: document.documentElement.classList.contains('dark') ? '#f1f5f9' : '#0f172a', borderWidth: 4, type: 'scatter'
                 });
 
                 trilaterationChart.data.datasets = datasets;
@@ -533,20 +559,17 @@
             function initTrilaterationChart() {
                 const ctx = document.getElementById('trilaterationChart').getContext('2d');
                 if (trilaterationChart) trilaterationChart.destroy();
+                const isDark = document.documentElement.classList.contains('dark');
+                const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : '#e2e8f0';
                 trilaterationChart = new Chart(ctx, {
-                    type: 'scatter',
-                    data: { datasets: [] },
+                    type: 'scatter', data: { datasets: [] },
                     options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
+                        responsive: true, maintainAspectRatio: false,
                         scales: {
-                            x: { min: 0, max: 100, grid: { color: '#e2e8f0' } },
-                            y: { min: 0, max: 100, grid: { color: '#e2e8f0' } }
+                            x: { min: 0, max: 100, grid: { color: gridColor }, ticks: { color: isDark ? '#94a3b8' : '#64748b' } },
+                            y: { min: 0, max: 100, grid: { color: gridColor }, ticks: { color: isDark ? '#94a3b8' : '#64748b' } }
                         },
-                        plugins: {
-                            legend: { display: false },
-                            tooltip: { enabled: false }
-                        },
+                        plugins: { legend: { display: false }, tooltip: { enabled: false } },
                         animation: { duration: 500 }
                     }
                 });
@@ -556,83 +579,66 @@
                 updateTrilaterationChart();
             }
 
+            // --- Fingerprinting Logic ---
+            function generateReferencePoints() {
+                fingerprintingState.referencePoints = [];
+                for (let i = 0; i < 15; i++) {
+                    for (let j = 0; j < 15; j++) {
+                        if (Math.random() > 0.3) {
+                             fingerprintingState.referencePoints.push({ x: 5 + i * 6, y: 5 + j * 6 });
+                        }
+                    }
+                }
+            }
+
             function updateFingerprintingChart() {
                 const { referencePoints, target, k } = fingerprintingState;
-                
-                const distances = referencePoints.map(rp => ({
-                    ...rp,
-                    dist: Math.sqrt((rp.x - target.x)**2 + (rp.y - target.y)**2)
-                }));
-                
+                const distances = referencePoints.map(rp => ({ ...rp, dist: Math.sqrt((rp.x - target.x)**2 + (rp.y - target.y)**2) }));
                 distances.sort((a, b) => a.dist - b.dist);
-                
                 const nearest = distances.slice(0, k);
-                
-                let avgX = 0, avgY = 0;
-                nearest.forEach(n => { avgX += n.x; avgY += n.y; });
-                const estimatedPos = { x: avgX / k, y: avgY / k };
+                const avg = nearest.reduce((acc, n) => ({x: acc.x + n.x, y: acc.y + n.y}), {x:0, y:0});
+                const estimatedPos = { x: avg.x / k, y: avg.y / k };
 
                 fingerprintingChart.data.datasets = [
-                    {
-                        label: 'Referentne Tačke (Radio Mapa)',
-                        data: referencePoints,
-                        pointBackgroundColor: '#cbd5e1',
-                        pointRadius: 5,
-                    },
-                    {
-                        label: 'Stvarna Lokacija Uređaja',
-                        data: [target],
-                        pointBackgroundColor: '#ef4444',
-                        pointRadius: 10,
-                        pointStyle: 'star'
-                    },
-                    {
-                        label: 'k-Najbliži Susedi',
-                        data: nearest,
-                        pointBackgroundColor: '#3b82f6',
-                        pointRadius: 7,
-                    },
-                    {
-                        label: 'Procenjena Lokacija',
-                        data: [estimatedPos],
-                        pointBackgroundColor: '#10b981',
-                        pointRadius: 10,
-                        pointStyle: 'triangle'
-                    }
+                    { label: 'Referentne Tačke', data: referencePoints, pointBackgroundColor: '#cbd5e1', pointRadius: 5 },
+                    { label: 'Stvarna Lokacija', data: [target], pointBackgroundColor: '#ef4444', pointRadius: 10, pointStyle: 'star' },
+                    { label: 'k-Najbliži Susedi', data: nearest, pointBackgroundColor: '#3b82f6', pointRadius: 7 },
+                    { label: 'Procenjena Lokacija', data: [estimatedPos], pointBackgroundColor: '#10b981', pointRadius: 10, pointStyle: 'triangle' }
                 ];
                 fingerprintingChart.update();
             }
 
             function initFingerprintingChart() {
-                const ctx = document.getElementById('fingerprintingChart').getContext('2d');
+                const canvas = document.getElementById('fingerprintingChart');
+                const ctx = canvas.getContext('2d');
                 if (fingerprintingChart) fingerprintingChart.destroy();
+                const isDark = document.documentElement.classList.contains('dark');
                 fingerprintingChart = new Chart(ctx, {
-                    type: 'scatter',
-                    data: { datasets: [] },
+                    type: 'scatter', data: { datasets: [] },
                     options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
+                        responsive: true, maintainAspectRatio: false,
                         scales: {
                             x: { min: 0, max: 100, display: false },
                             y: { min: 0, max: 100, display: false }
                         },
                         plugins: {
-                            legend: { position: 'bottom' },
+                            legend: { position: 'bottom', labels: { color: isDark ? '#94a3b8' : '#64748b' } },
                             tooltip: { enabled: true }
                         }
                     }
                 });
-                fingerprintingState.target = { x: Math.random() * 80 + 10, y: Math.random() * 80 + 10 };
-                generateReferencePoints();
+                if (fingerprintingState.referencePoints.length === 0) {
+                    generateReferencePoints();
+                }
                 updateFingerprintingChart();
             }
-
+            
+            // --- Event Listeners ---
             document.getElementById('add-node-btn').addEventListener('click', () => {
                 trilaterationState.showThirdNode = true;
                 updateTrilaterationChart();
                 document.getElementById('add-node-btn').disabled = true;
             });
-
             document.getElementById('reset-trilateration-btn').addEventListener('click', initTrilaterationChart);
             document.getElementById('noise-toggle').addEventListener('change', (e) => {
                 trilaterationState.noise = e.target.checked;
@@ -646,8 +652,39 @@
                 kValue.textContent = fingerprintingState.k;
                 updateFingerprintingChart();
             });
-            document.getElementById('reset-fingerprinting-btn').addEventListener('click', initFingerprintingChart);
+            document.getElementById('reset-fingerprinting-btn').addEventListener('click', () => {
+                fingerprintingState.target = { x: Math.random() * 80 + 10, y: Math.random() * 80 + 10 };
+                updateFingerprintingChart();
+            });
 
+            // Drag and drop for fingerprinting chart
+            const fpCanvas = document.getElementById('fingerprintingChart');
+            fpCanvas.addEventListener('mousedown', (e) => {
+                const rect = fpCanvas.getBoundingClientRect();
+                const x = (e.clientX - rect.left) / rect.width * 100;
+                const y = (e.clientY - rect.top) / rect.height * 100;
+                const dist = Math.sqrt((x - fingerprintingState.target.x)**2 + (y - fingerprintingState.target.y)**2);
+                if (dist < 5) { // Click is near the target
+                    fingerprintingState.isDragging = true;
+                }
+            });
+            fpCanvas.addEventListener('mousemove', (e) => {
+                if (fingerprintingState.isDragging) {
+                    const rect = fpCanvas.getBoundingClientRect();
+                    fingerprintingState.target.x = (e.clientX - rect.left) / rect.width * 100;
+                    fingerprintingState.target.y = (e.clientY - rect.top) / rect.height * 100;
+                    updateFingerprintingChart();
+                }
+            });
+            fpCanvas.addEventListener('mouseup', () => {
+                fingerprintingState.isDragging = false;
+            });
+             fpCanvas.addEventListener('mouseleave', () => {
+                fingerprintingState.isDragging = false;
+            });
+
+
+            // --- Initial Load ---
             initTrilaterationChart();
             initFingerprintingChart();
             switchContent('intro');
@@ -655,4 +692,3 @@
     </script>
 </body>
 </html>
-
