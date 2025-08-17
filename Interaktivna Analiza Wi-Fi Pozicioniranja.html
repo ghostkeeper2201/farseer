@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interaktivna Analiza Wi-Fi Pozicioniranja</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Slate Gray Harmony -->
+    <!-- Application Structure Plan: A single-page application designed for guided exploration. The structure uses a top navigation bar to switch between four logical sections: an introduction, a core interactive section comparing positioning methods (Trilateration vs. Fingerprinting), a visual overview of the system architecture, and a summary of key recommendations. This thematic structure was chosen over mirroring the report's linear format to allow users to directly compare the two main technologies and understand their practical implications through interactive visualizations. The user flow encourages learning by doing, starting with simple concepts and adding complexity via user interaction (e.g., adding a third node or toggling signal noise). -->
+    <!-- Visualization & Content Choices: 
+        - Report Info: Trilateration with 2 vs 3 nodes. Goal: Demonstrate ambiguity problem and its solution. Viz/Presentation: Interactive Chart.js scatter plot simulating a map. Interaction: A button "Dodaj 3. Čvor" adds the third data point and recalculates the unique position. Justification: Visually proves why three nodes are necessary, a core concept in the report. Library: Chart.js (Canvas).
+        - Report Info: Impact of signal noise. Goal: Explain the need for robust algorithms. Viz/Presentation: Toggle switch on the Trilateration chart. Interaction: "Šum Signala" toggle moves circles so they no longer intersect perfectly. Justification: Makes the abstract concept of "noise" tangible and justifies the report's recommendation for best-fit algorithms. Library: Chart.js (Canvas).
+        - Report Info: Fingerprinting method (Offline/Online phases). Goal: Explain the two-phase process and k-NN. Viz/Presentation: A two-part interactive view with a grid for the radio map and a k-NN visualization. Interaction: A slider allows users to change the 'k' value in the k-NN algorithm and see the immediate impact on the estimated location. Justification: Clarifies the complex fingerprinting workflow and provides a hands-on feel for how the matching algorithm works. Library: Chart.js (Canvas).
+        - Report Info: System Architecture. Goal: Illustrate the client-server model. Viz/Presentation: A clean diagram built with HTML/CSS. Interaction: Static visual. Justification: More engaging and easier to understand than a block of text. Method: HTML/Tailwind CSS.
+        - Report Info: Comparative Analysis. Goal: Summarize pros and cons. Viz/Presentation: A styled HTML table. Interaction: Static visual. Justification: Clear, direct comparison as presented in the source document. Method: HTML/Tailwind CSS. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* slate-50 */
+            color: #334155; /* slate-700 */
+        }
+        .nav-btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .nav-btn.active {
+            background-color: #0f172a; /* slate-900 */
+            color: #f8fafc; /* slate-50 */
+        }
+        .nav-btn:not(.active):hover {
+            background-color: #e2e8f0; /* slate-200 */
+        }
+        .content-section {
+            display: none;
+        }
+        .content-section.active {
+            display: block;
+        }
+        .card {
+            background-color: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.1);
+        }
+        .tab-btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            background-color: #f1f5f9; /* slate-100 */
+            color: #475569; /* slate-600 */
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .tab-btn.active {
+            background-color: #0f172a; /* slate-900 */
+            color: white;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            max-height: 50vh;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 450px;
+            }
+        }
+        .control-panel button, .control-panel .toggle-switch {
+            transition: all 0.2s ease-in-out;
+        }
+        .control-panel button:hover {
+            transform: scale(1.05);
+        }
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: #1e293b; /* slate-800 */
+        }
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+    </style>
+</head>
+<body class="bg-slate-50">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-7xl">
+        
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-slate-900 mb-2">Analiza Sistema za Wi-Fi Pozicioniranje</h1>
+            <p class="text-lg text-slate-600">Interaktivna vizuelizacija tehničkog plana</p>
+        </header>
+
+        <nav class="flex justify-center items-center bg-white p-2 rounded-xl shadow-md mb-10 sticky top-4 z-10">
+            <div class="flex flex-wrap justify-center gap-2">
+                <button class="nav-btn active" data-target="intro">Uvod</button>
+                <button class="nav-btn" data-target="methods">Metode Pozicioniranja</button>
+                <button class="nav-btn" data-target="architecture">Arhitektura Sistema</button>
+                <button class="nav-btn" data-target="recommendations">Analiza i Preporuke</button>
+            </div>
+        </nav>
+
+        <main>
+            <section id="intro" class="content-section active">
+                 <div class="card text-center">
+                    <h2 class="text-3xl font-bold text-slate-800 mb-4">Dobrodošli</h2>
+                    <p class="text-slate-600 max-w-3xl mx-auto leading-relaxed">
+                        Ova aplikacija pruža interaktivni pregled tehničkog plana za razvoj sistema za unutrašnje pozicioniranje pomoću Wi-Fi signala. Cilj je prevesti složene koncepte iz plana, kao što su **Trilateracija** i **Fingerprinting**, u intuitivne vizuelizacije. Istražite različite metode, razumite arhitekturu sistema i pregledajte ključne preporuke za dalji razvoj. Započnite odabirom jedne od sekcija iz navigacije.
+                    </p>
+                </div>
+            </section>
+
+            <section id="methods" class="content-section">
+                <div class="text-center mb-8">
+                    <h2 class="text-3xl font-bold text-slate-800">Interaktivno Poređenje Metoda</h2>
+                    <p class="text-slate-600 max-w-3xl mx-auto">
+                        Izaberite jednu od dve ključne metode pozicioniranja da biste videli kako funkcionišu u praksi. Svaka vizuelizacija vam omogućava da manipulišete parametrima i steknete dublje razumevanje njihovih prednosti i mana.
+                    </p>
+                </div>
+                <div class="flex justify-center gap-4 mb-6">
+                    <button class="tab-btn active" data-tab="trilateration">Trilateracija</button>
+                    <button class="tab-btn" data-tab="fingerprinting">Fingerprinting</button>
+                </div>
+
+                <div id="trilateration" class="tab-content active">
+                    <div class="card">
+                        <div class="grid md:grid-cols-2 gap-8 items-center">
+                            <div>
+                                <h3 class="text-2xl font-bold text-slate-800 mb-3">Trilateracija: Geometrija Signala</h3>
+                                <p class="text-slate-600 mb-4 leading-relaxed">
+                                    Trilateracija procenjuje poziciju merenjem udaljenosti od poznatih tačaka (senzora). Udaljenost se računa iz jačine Wi-Fi signala (RSSI). Vizuelizacija prikazuje kako broj senzora utiče na preciznost.
+                                </p>
+                                <div class="control-panel bg-slate-100 p-4 rounded-lg space-y-4">
+                                    <div>
+                                        <h4 class="font-semibold text-slate-700 mb-2">Kontrole simulacije:</h4>
+                                        <div class="flex flex-col sm:flex-row gap-4">
+                                            <button id="add-node-btn" class="w-full bg-slate-800 text-white font-bold py-2 px-4 rounded-lg hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-opacity-50">Dodaj 3. Čvor</button>
+                                            <button id="reset-trilateration-btn" class="w-full bg-slate-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-opacity-50">Resetuj</button>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span class="font-semibold text-slate-700">Šum Signala (Realni uslovi)</span>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" id="noise-toggle">
+                                            <span class="slider"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                                 <p id="trilateration-status" class="mt-4 text-center font-medium text-slate-700 h-12 flex items-center justify-center"></p>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="trilaterationChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="fingerprinting" class="tab-content">
+                     <div class="card">
+                        <div class="grid md:grid-cols-2 gap-8 items-center">
+                           <div>
+                                <h3 class="text-2xl font-bold text-slate-800 mb-3">Fingerprinting: Mapa Signala</h3>
+                                <p class="text-slate-600 mb-4 leading-relaxed">
+                                    Ova metoda se sastoji od dve faze. Prvo, u **Offline fazi**, kreira se detaljna "mapa" jačina signala. Zatim, u **Online fazi**, trenutna očitavanja se porede sa mapom kako bi se pronašla najsličnija lokacija pomoću k-NN algoritma.
+                                </p>
+                                <div class="control-panel bg-slate-100 p-4 rounded-lg space-y-4">
+                                    <div>
+                                        <h4 class="font-semibold text-slate-700 mb-2">k-Nearest Neighbors (k-NN) Parametar:</h4>
+                                        <div class="flex items-center gap-4">
+                                            <label for="k-slider" class="whitespace-nowrap">Vrednost 'k':</label>
+                                            <input id="k-slider" type="range" min="1" max="10" value="3" class="w-full">
+                                            <span id="k-value" class="font-bold text-slate-800 w-8 text-center">3</span>
+                                        </div>
+                                    </div>
+                                    <button id="reset-fingerprinting-btn" class="w-full bg-slate-800 text-white font-bold py-2 px-4 rounded-lg hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-opacity-50">Resetuj Simulaciju</button>
+                                </div>
+                                <p class="mt-4 text-center font-medium text-slate-700">Pomerajte 'k' slajder da vidite kako broj suseda utiče na procenjenu lokaciju.</p>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="fingerprintingChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="architecture" class="content-section">
+                <div class="card">
+                    <h2 class="text-3xl font-bold text-slate-800 mb-2 text-center">Arhitektura Sistema</h2>
+                    <p class="text-slate-600 max-w-3xl mx-auto text-center mb-8">
+                        Sistem je zasnovan na Klijent-Server arhitekturi. Klijenti (različiti uređaji) prikupljaju podatke o Wi-Fi signalu i šalju ih centralnom serveru, koji vrši složene proračune pozicioniranja i skladišti podatke u bazi.
+                    </p>
+                    <div class="max-w-4xl mx-auto p-4">
+                        <div class="flex flex-col md:flex-row items-center justify-center gap-8 text-center">
+                            <div class="flex flex-col items-center gap-4">
+                                <div class="font-semibold text-lg">Klijenti</div>
+                                <div class="w-1 h-8 bg-slate-300"></div>
+                                <div class="flex flex-col gap-4">
+                                    <div class="bg-white p-4 rounded-lg shadow-md border border-slate-200">
+                                        <span class="text-4xl">💻</span>
+                                        <p class="font-semibold mt-1">Windows Klijent</p>
+                                        <p class="text-sm text-slate-500">Aktivno skeniranje</p>
+                                    </div>
+                                    <div class="bg-white p-4 rounded-lg shadow-md border border-slate-200">
+                                        <span class="text-4xl">🐧</span>
+                                        <p class="font-semibold mt-1">Linux Klijent</p>
+                                        <p class="text-sm text-slate-500">Pasivno praćenje</p>
+                                    </div>
+                                     <div class="bg-white p-4 rounded-lg shadow-md border border-slate-200">
+                                        <span class="text-4xl">🍓</span>
+                                        <p class="font-semibold mt-1">Raspberry Pi</p>
+                                        <p class="text-sm text-slate-500">Senzorski čvor</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="hidden md:block text-5xl text-slate-400 font-light">→</div>
+                            <div class="md:hidden text-5xl text-slate-400 font-light">↓</div>
+
+                            <div class="flex flex-col items-center gap-4">
+                                <div class="font-semibold text-lg">Server</div>
+                                <div class="w-1 h-8 bg-slate-300"></div>
+                                <div class="bg-white p-6 rounded-lg shadow-lg border border-slate-200">
+                                     <span class="text-5xl">⚙️</span>
+                                    <p class="font-bold text-xl mt-2">Centralni Server</p>
+                                    <p class="text-slate-500 mt-2">Python (Flask)</p>
+                                    <p class="text-slate-500">WebSocket</p>
+                                    <p class="text-slate-500">Logika pozicioniranja</p>
+                                </div>
+                                <div class="w-1 h-8 bg-slate-300"></div>
+                                <div class="bg-white p-6 rounded-lg shadow-lg border border-slate-200">
+                                    <span class="text-5xl">🗄️</span>
+                                    <p class="font-bold text-xl mt-2">Baza Podataka</p>
+                                    <p class="text-slate-500 mt-2">PostgreSQL</p>
+                                    <p class="text-slate-500">PostGIS Ekstenzija</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="recommendations" class="content-section">
+                <div class="card">
+                    <h2 class="text-3xl font-bold text-slate-800 mb-6 text-center">Uporedna Analiza i Preporuke</h2>
+                    <div class="overflow-x-auto">
+                        <table class="w-full min-w-max text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-800 text-white">
+                                    <th class="p-4 font-semibold">Karakteristika</th>
+                                    <th class="p-4 font-semibold">Trilateracija</th>
+                                    <th class="p-4 font-semibold">Fingerprinting</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white">
+                                <tr class="border-b border-slate-200">
+                                    <td class="p-4 font-medium text-slate-700">Preciznost</td>
+                                    <td class="p-4 text-slate-600">Srednja (2-4m sa 3+ čvora)</td>
+                                    <td class="p-4 text-slate-600">Visoka (potencijalno <1m sa ML)</td>
+                                </tr>
+                                <tr class="border-b border-slate-200">
+                                    <td class="p-4 font-medium text-slate-700">Napor za kalibraciju</td>
+                                    <td class="p-4 text-slate-600">Nizak (merenje parametara)</td>
+                                    <td class="p-4 text-slate-600">Veoma visok (kreiranje radio mape)</td>
+                                </tr>
+                                <tr class="border-b border-slate-200">
+                                    <td class="p-4 font-medium text-slate-700">Prilagodljivost</td>
+                                    <td class="p-4 text-slate-600">Visoka (lako dodavanje čvorova)</td>
+                                    <td class="p-4 text-slate-600">Niska (zahteva rekalibraciju)</td>
+                                </tr>
+                                <tr class="border-b border-slate-200">
+                                    <td class="p-4 font-medium text-slate-700">Složenost algoritma</td>
+                                    <td class="p-4 text-slate-600">Visoka (matematički proračuni)</td>
+                                    <td class="p-4 text-slate-600">Niska (pretraga baze)</td>
+                                </tr>
+                                 <tr class="border-b border-slate-200">
+                                    <td class="p-4 font-medium text-slate-700">Podložnost šumu</td>
+                                    <td class="p-4 text-slate-600">Visoka (zahteva napredne algoritme)</td>
+                                    <td class="p-4 text-slate-600">Niska (inherentno robustan)</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-8">
+                        <h3 class="text-2xl font-bold text-slate-800 mb-4 text-center">Ključne Preporuke za Budući Razvoj</h3>
+                        <div class="grid md:grid-cols-3 gap-6 text-center">
+                            <div class="bg-slate-50 p-6 rounded-lg">
+                                <h4 class="font-bold text-lg text-slate-900 mb-2">Hibridni Model</h4>
+                                <p class="text-slate-600">Kombinovati prednosti obe metode: koristiti trilateraciju za grubu procenu, a zatim fingerprinting za fino podešavanje pozicije.</p>
+                            </div>
+                            <div class="bg-slate-50 p-6 rounded-lg">
+                                <h4 class="font-bold text-lg text-slate-900 mb-2">Hardverska Skalabilnost</h4>
+                                <p class="text-slate-600">Dizajnirati sistem za laku integraciju jeftinih IoT uređaja (npr. ESP32) kao dodatnih senzora za šire pokrivanje prostora.</p>
+                            </div>
+                            <div class="bg-slate-50 p-6 rounded-lg">
+                                <h4 class="font-bold text-lg text-slate-900 mb-2">Proširenje Primene</h4>
+                                <p class="text-slate-600">Razviti platformu ka rešenjima za unutrašnju navigaciju, integracijom sa tehnologijama poput Bluetooth (BLE) ili UWB.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const navButtons = document.querySelectorAll('.nav-btn');
+            const contentSections = document.querySelectorAll('.content-section');
+            const tabButtons = document.querySelectorAll('.tab-btn');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            function switchContent(targetId) {
+                navButtons.forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.target === targetId);
+                });
+                contentSections.forEach(section => {
+                    section.classList.toggle('active', section.id === targetId);
+                });
+            }
+
+            navButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    switchContent(button.dataset.target);
+                });
+            });
+
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    button.classList.add('active');
+                    tabContents.forEach(content => {
+                        content.classList.toggle('active', content.id === button.dataset.tab);
+                    });
+                });
+            });
+
+            let trilaterationChart, fingerprintingChart;
+
+            const trilaterationState = {
+                nodes: [
+                    { x: 10, y: 80, r: 50, color: 'rgba(59, 130, 246, 0.5)' },
+                    { x: 90, y: 80, r: 60, color: 'rgba(239, 68, 68, 0.5)' }
+                ],
+                thirdNode: { x: 50, y: 10, r: 45, color: 'rgba(22, 163, 74, 0.5)' },
+                target: { x: 50, y: 50 },
+                noise: false,
+                showThirdNode: false
+            };
+
+            const fingerprintingState = {
+                referencePoints: [],
+                target: { x: Math.random() * 80 + 10, y: Math.random() * 80 + 10 },
+                k: 3
+            };
+
+            function generateReferencePoints() {
+                fingerprintingState.referencePoints = [];
+                for (let i = 0; i < 15; i++) {
+                    for (let j = 0; j < 15; j++) {
+                        if (Math.random() > 0.3) {
+                             fingerprintingState.referencePoints.push({
+                                x: 5 + i * 6,
+                                y: 5 + j * 6,
+                                rssi: Math.random()
+                            });
+                        }
+                    }
+                }
+            }
+
+            function getIntersectionPoints(p1, p2) {
+                const d = Math.sqrt((p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2);
+                if (d > p1.r + p2.r || d < Math.abs(p1.r - p2.r) || d === 0) return [];
+                
+                const a = (p1.r ** 2 - p2.r ** 2 + d ** 2) / (2 * d);
+                const h = Math.sqrt(p1.r ** 2 - a ** 2);
+                const x2 = p1.x + a * (p2.x - p1.x) / d;
+                const y2 = p1.y + a * (p2.y - p1.y) / d;
+
+                const pt1 = {
+                    x: x2 + h * (p2.y - p1.y) / d,
+                    y: y2 - h * (p2.x - p1.x) / d
+                };
+                const pt2 = {
+                    x: x2 - h * (p2.y - p1.y) / d,
+                    y: y2 + h * (p2.x - p1.x) / d
+                };
+                return [pt1, pt2];
+            }
+
+            function findBestFit(nodes) {
+                let sumX = 0, sumY = 0;
+                let intersections = [];
+                for(let i=0; i<nodes.length; i++) {
+                    for(let j=i+1; j<nodes.length; j++) {
+                        intersections.push(...getIntersectionPoints(nodes[i], nodes[j]));
+                    }
+                }
+                if (intersections.length === 0) return null;
+                intersections.forEach(p => { sumX += p.x; sumY += p.y; });
+                return { x: sumX / intersections.length, y: sumY / intersections.length };
+            }
+
+            function updateTrilaterationChart() {
+                const statusEl = document.getElementById('trilateration-status');
+                const datasets = [];
+                const currentNodes = trilaterationState.showThirdNode ? [...trilaterationState.nodes, trilaterationState.thirdNode] : [...trilaterationState.nodes];
+                
+                const noisyNodes = currentNodes.map(node => ({
+                    ...node,
+                    r: trilaterationState.noise ? node.r * (0.8 + Math.random() * 0.4) : node.r
+                }));
+
+                noisyNodes.forEach((node, index) => {
+                    datasets.push({
+                        label: `Senzor ${index + 1}`,
+                        data: [{ x: node.x, y: node.y }],
+                        pointRadius: 10,
+                        pointBackgroundColor: node.color.replace('0.5', '1'),
+                        borderColor: node.color.replace('0.5', '1'),
+                        borderWidth: 2,
+                        type: 'scatter'
+                    });
+
+                    const circlePoints = [];
+                    for (let i = 0; i <= 360; i++) {
+                        const angle = i * Math.PI / 180;
+                        circlePoints.push({
+                            x: node.x + node.r * Math.cos(angle),
+                            y: node.y + node.r * Math.sin(angle)
+                        });
+                    }
+                    datasets.push({
+                        label: `Domet Senzora ${index + 1}`,
+                        data: circlePoints,
+                        borderColor: node.color,
+                        backgroundColor: node.color.replace('0.5', '0.2'),
+                        borderWidth: 2,
+                        showLine: true,
+                        pointRadius: 0,
+                        fill: true,
+                        type: 'scatter'
+                    });
+                });
+                
+                let locationPoints = [];
+                if (trilaterationState.showThirdNode) {
+                    const bestFit = findBestFit(noisyNodes);
+                    if(bestFit) {
+                        locationPoints.push(bestFit);
+                        statusEl.textContent = "Jedinstvena lokacija pronađena metodom 'najboljeg uklapanja'.";
+                    } else {
+                         statusEl.textContent = "Nema preseka. Potrebno je prilagoditi pozicije ili domete.";
+                    }
+                } else {
+                    const intersections = getIntersectionPoints(noisyNodes[0], noisyNodes[1]);
+                    locationPoints.push(...intersections);
+                    if(intersections.length === 2) {
+                        statusEl.textContent = "Dva senzora daju dve moguće lokacije. Potreban je treći.";
+                    } else {
+                        statusEl.textContent = "Nema preseka. Dva senzora nisu dovoljna.";
+                    }
+                }
+
+                datasets.push({
+                    label: 'Moguća Lokacija',
+                    data: locationPoints,
+                    pointRadius: 8,
+                    pointStyle: 'crossRot',
+                    pointBackgroundColor: '#0f172a',
+                    borderColor: '#0f172a',
+                    borderWidth: 4,
+                    type: 'scatter'
+                });
+
+                trilaterationChart.data.datasets = datasets;
+                trilaterationChart.update();
+            }
+            
+            function initTrilaterationChart() {
+                const ctx = document.getElementById('trilaterationChart').getContext('2d');
+                if (trilaterationChart) trilaterationChart.destroy();
+                trilaterationChart = new Chart(ctx, {
+                    type: 'scatter',
+                    data: { datasets: [] },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: { min: 0, max: 100, grid: { color: '#e2e8f0' } },
+                            y: { min: 0, max: 100, grid: { color: '#e2e8f0' } }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: { enabled: false }
+                        },
+                        animation: { duration: 500 }
+                    }
+                });
+                document.getElementById('add-node-btn').disabled = false;
+                trilaterationState.showThirdNode = false;
+                trilaterationState.noise = document.getElementById('noise-toggle').checked;
+                updateTrilaterationChart();
+            }
+
+            function updateFingerprintingChart() {
+                const { referencePoints, target, k } = fingerprintingState;
+                
+                const distances = referencePoints.map(rp => ({
+                    ...rp,
+                    dist: Math.sqrt((rp.x - target.x)**2 + (rp.y - target.y)**2)
+                }));
+                
+                distances.sort((a, b) => a.dist - b.dist);
+                
+                const nearest = distances.slice(0, k);
+                
+                let avgX = 0, avgY = 0;
+                nearest.forEach(n => { avgX += n.x; avgY += n.y; });
+                const estimatedPos = { x: avgX / k, y: avgY / k };
+
+                fingerprintingChart.data.datasets = [
+                    {
+                        label: 'Referentne Tačke (Radio Mapa)',
+                        data: referencePoints,
+                        pointBackgroundColor: '#cbd5e1',
+                        pointRadius: 5,
+                    },
+                    {
+                        label: 'Stvarna Lokacija Uređaja',
+                        data: [target],
+                        pointBackgroundColor: '#ef4444',
+                        pointRadius: 10,
+                        pointStyle: 'star'
+                    },
+                    {
+                        label: 'k-Najbliži Susedi',
+                        data: nearest,
+                        pointBackgroundColor: '#3b82f6',
+                        pointRadius: 7,
+                    },
+                    {
+                        label: 'Procenjena Lokacija',
+                        data: [estimatedPos],
+                        pointBackgroundColor: '#10b981',
+                        pointRadius: 10,
+                        pointStyle: 'triangle'
+                    }
+                ];
+                fingerprintingChart.update();
+            }
+
+            function initFingerprintingChart() {
+                const ctx = document.getElementById('fingerprintingChart').getContext('2d');
+                if (fingerprintingChart) fingerprintingChart.destroy();
+                fingerprintingChart = new Chart(ctx, {
+                    type: 'scatter',
+                    data: { datasets: [] },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: { min: 0, max: 100, display: false },
+                            y: { min: 0, max: 100, display: false }
+                        },
+                        plugins: {
+                            legend: { position: 'bottom' },
+                            tooltip: { enabled: true }
+                        }
+                    }
+                });
+                fingerprintingState.target = { x: Math.random() * 80 + 10, y: Math.random() * 80 + 10 };
+                generateReferencePoints();
+                updateFingerprintingChart();
+            }
+
+            document.getElementById('add-node-btn').addEventListener('click', () => {
+                trilaterationState.showThirdNode = true;
+                updateTrilaterationChart();
+                document.getElementById('add-node-btn').disabled = true;
+            });
+
+            document.getElementById('reset-trilateration-btn').addEventListener('click', initTrilaterationChart);
+            document.getElementById('noise-toggle').addEventListener('change', (e) => {
+                trilaterationState.noise = e.target.checked;
+                updateTrilaterationChart();
+            });
+
+            const kSlider = document.getElementById('k-slider');
+            const kValue = document.getElementById('k-value');
+            kSlider.addEventListener('input', (e) => {
+                fingerprintingState.k = parseInt(e.target.value, 10);
+                kValue.textContent = fingerprintingState.k;
+                updateFingerprintingChart();
+            });
+            document.getElementById('reset-fingerprinting-btn').addEventListener('click', initFingerprintingChart);
+
+            initTrilaterationChart();
+            initFingerprintingChart();
+            switchContent('intro');
+        });
+    </script>
+</body>
+</html>
